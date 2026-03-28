@@ -1,0 +1,173 @@
+# Interview Preparation Guide — Full Stack Developer
+
+## Workspace Structure
+
+### Conventions
+- **Folders:** kebab-case (e.g., `array-problems`, `basic-problems`)
+- **JS files:** snake_case (e.g., `bubble_sort.js`, `fibonacci_recursion.js`)
+- **LeetCode files:** `NNN_title.js` (e.g., `001_two_sum.js`, `189_rotate_array.js`)
+
+### Directory Layout
+
+```
+interview_notes/
+├── index.html                          # Main entry point
+├── practice.js                         # Sliding window practice
+├── node.md                             # Node.js interview guide
+├── Notes.txt                           # Mixed notes (CSS, Promises, React)
+├── README.md                           # JavaScript context guide
+│
+├── array-problems/                     # Array-based DSA problems
+│   ├── array_flat.js
+│   ├── bubble_sort.js
+│   ├── count_pairs_sum_equal_k.js
+│   ├── count_subarray_sum_equal_k.js
+│   ├── duplicate_values_in_an_array.js
+│   ├── equilibrium_index_of_array.js
+│   ├── is_sorted_and_how.js
+│   ├── maximum_product_subarray.js
+│   ├── maximum_subarray_sum.js
+│   ├── merge_two_sorted_arrays.js
+│   ├── permutations_using_recursion.js
+│   ├── print_indexes_of_pairs_sum_equal_target.js
+│   ├── print_missing_and_repeating_number_in_array.js
+│   ├── print_missing_number_in_array.js
+│   ├── remove_duplicate_values_in_array.js
+│   ├── rotate_array_clockwise_k_times.js
+│   ├── sort_ones_and_zeros.js
+│   ├── subarray_with_sum_k.js
+│   ├── subarray_with_zero_sum.js
+│   ├── sum_of_special_pairs.js
+│   ├── two_sum.js
+│   └── unique_values_in_array.js
+│
+├── basic-problems/                     # Fundamentals (patterns, primes, fibonacci)
+│   ├── fibonacci_recursion.js
+│   ├── fibonacci_series.js
+│   ├── is_prime.js
+│   ├── is_prime_recursion.js
+│   ├── missing_letters.js
+│   ├── print_pattern_1.js … print_pattern_5.js
+│   ├── print_pyramid_pattern.js
+│   ├── print_reverse_pyramid.js
+│   ├── sum_of_all_odd_fibonacci_numbers.js
+│   └── sum_of_all_primes.js
+│
+├── high-end-problems/                  # Advanced JS problems
+│   └── model.js                        # Two-way data binding with Proxy
+│
+├── javascript/                         # Core JavaScript concepts
+│   ├── apply_polyfill.js
+│   ├── array_methods.js
+│   ├── bind_polyfill.js
+│   ├── call_apply_bind.js
+│   ├── closure.js
+│   ├── closure_again.js
+│   ├── composition_polyfill.js
+│   ├── currying.js
+│   ├── custom_array_function.js
+│   ├── debouncing.js
+│   ├── es6classes.js
+│   ├── event_propagation.js
+│   ├── filter.js
+│   ├── function.js
+│   ├── getter_and_setter.js
+│   ├── hoisting.js
+│   ├── map_set_weakMap_weakSet.js
+│   ├── polyfill_array.js
+│   ├── promise.js
+│   ├── prototype.js
+│   ├── prototype_inheritance_object_create.js
+│   └── throttling.js
+│
+├── javascript-output-questions/        # Tricky JS output questions
+│   ├── q1.js … q9.js
+│   └── index.html
+│
+├── leetcode/                           # LeetCode solutions
+│   ├── 001_two_sum.js
+│   ├── 002_add_two_numbers.js
+│   ├── 003_longest_substring_without_repeating_characters.js
+│   ├── 027_remove_element.js
+│   ├── 028_find_index_of_first_occurrence.js
+│   ├── 189_rotate_array.js
+│   ├── 217_contains_duplicate.js
+│   └── 278_first_bad_version.js
+│
+├── linked-list/                        # Linked list implementations
+│   └── SingleLinkedList.js
+│
+├── machine-coding/                     # Machine coding round problems
+│   └── star_rating_functionality/
+│
+├── nodejs/                             # Node.js projects & concepts
+│   ├── handle-multiple-request-mock/
+│   ├── libuv-explanation/
+│   ├── logger-system-set-immediate-use-case/
+│   ├── server-using-express/
+│   ├── set-immediate-demo/
+│   └── user-authentication/
+│
+├── public/                             # Images & diagrams
+│   ├── callstack.png
+│   ├── callstack2.png
+│   ├── code_snippet_execution_context.jpg
+│   ├── memory_allocation_phase.jpg
+│   ├── memory_and_code.jpg
+│   ├── memory_and_code_for_line_8.jpg
+│   ├── memory_and_code_for_line_8_context_deleted.jpg
+│   └── memory_and_code-till-line-6.jpg
+│
+├── react/                              # React projects & concepts
+│   ├── autocomplete-input/
+│   ├── draw-dots-on-click/
+│   ├── emi-calculator/
+│   ├── generate-users/
+│   ├── react-multi-and-all-select-dropdown/
+│   ├── react-multi-select/
+│   ├── react-pagination/
+│   ├── react-redux-auth/
+│   ├── react-revision/
+│   ├── react-router-revision/
+│   ├── react-simple-authentication/
+│   ├── react-typescript/
+│   ├── redux-revision/
+│   ├── user-auth-in-react-and-node/
+│   └── vs-code-sidebar-structure/
+│
+├── recursion/                          # Recursion & backtracking
+│   ├── binary_search.js
+│   ├── fibonacci.js
+│   ├── is_array_sorted.js
+│   ├── n_queens.js
+│   ├── n_queens_ii.js
+│   ├── permutations.js
+│   ├── print_all_subsets.js
+│   ├── store_and_print_all_subsets.js
+│   ├── subsets.cpp
+│   └── subsets_ii.js
+│
+├── sliding-window-problems/            # Sliding window pattern
+│   ├── 239_sliding_window_maximum.js
+│   └── count_k_length_subarrays_for_given_sum.js
+│
+├── special-problems/                   # Misc interview problems
+│   ├── max_path_between_identical_letters.js
+│   └── smallest_subarray_with_same_weight.js
+│
+├── stack/                              # Stack-based problems
+│   ├── nearest_greater_to_left.js
+│   ├── nearest_greater_to_right.js
+│   ├── nearest_smaller_to_left.js
+│   └── nearest_smaller_to_right.js
+│
+└── string-problems/                    # String manipulation problems
+    ├── all_permutation_of_string.js
+    ├── all_permutations_of_string_type2.js
+    ├── find_first_occurrence_in_string.js
+    ├── longest_substring_without_repeating_characters.js
+    ├── palindrome_checker.js
+    ├── print_all_substring_len3.js
+    ├── print_all_substrings.js
+    └── valid_parenthesis.js
+```
