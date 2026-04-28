@@ -15,7 +15,7 @@
 1. [Error Handling Patterns](#5-error-handling-patterns)
 1. [Express.js & Middleware](#6-expressjs--middleware)
 1. [Authentication & Security](#7-authentication--security)
-1. [Database Patterns (SQL & NoSQL)](#8-database-patterns)
+1. [Database Patterns (SQL & NoSQL)](#8-database-patterns-sql--nosql)
 1. [Caching Strategies](#9-caching-strategies)
 1. [Message Queues & Event-Driven Architecture](#10-message-queues--event-driven-architecture)
 1. [Performance & Clustering](#11-performance--clustering)
@@ -643,7 +643,7 @@ router.get('/admin/users', auth.authenticate, auth.authorize('admin'), getUsers)
 
 -----
 
-## 8. Database Patterns
+## 8. Database Patterns (SQL & NoSQL)
 
 ### Repository Pattern with Connection Pooling
 
@@ -1361,6 +1361,85 @@ router.post('/webhooks/s3', async (req, res) => {
 });
 ```
 
+### Q4: Design a Job Queue / Background Processing System
+
+**Architecture:**
+
+```
+API Server → Bull Queue (Redis) → Worker Processes → Results DB → Webhook/SSE notify client
+```
+
+```javascript
+const Bull = require('bull');
+const { Worker } = require('worker_threads');
+
+// Producer: API adds jobs to queue
+const emailQueue = new Bull('email', {
+  redis: { host: process.env.REDIS_HOST, port: 6379 },
+  defaultJobOptions: {
+    attempts: 3,                              // Retry up to 3 times on failure
+    backoff: { type: 'exponential', delay: 5000 }, // 5s, 10s, 20s between retries
+    removeOnComplete: 100,                    // Keep last 100 completed jobs
+    removeOnFail: 500,                        // Keep last 500 failed jobs for debugging
+  }
+});
+
+// Add job with priority
+await emailQueue.add('welcome-email', {
+  userId: user.id,
+  email: user.email,
+  templateId: 'welcome-v2'
+}, {
+  priority: 1,    // Lower number = higher priority
+  delay: 0,       // Start immediately
+  jobId: `welcome:${user.id}` // Prevent duplicate jobs for same user
+});
+
+// Consumer: Worker process pulls and processes jobs
+emailQueue.process('welcome-email', 5, async (job) => {
+  // 5 = concurrency: process 5 jobs simultaneously per worker
+  const { userId, email, templateId } = job.data;
+
+  // Update progress (visible in Bull dashboard)
+  await job.progress(10);
+
+  const template = await templateService.render(templateId, { userId });
+  await job.progress(50);
+
+  await emailProvider.send({ to: email, ...template });
+  await job.progress(100);
+
+  // Return value is stored with job result
+  return { sent: true, timestamp: new Date() };
+});
+
+// Monitor queue health
+emailQueue.on('failed', (job, err) => {
+  logger.error('Email job failed', {
+    jobId: job.id,
+    data: job.data,
+    attemptsMade: job.attemptsMade,
+    error: err.message
+  });
+
+  // Alert on-call if a job exhausts all retries
+  if (job.attemptsMade >= job.opts.attempts) {
+    alerting.notify(`Email job ${job.id} exhausted retries`);
+  }
+});
+
+emailQueue.on('stalled', (job) => {
+  // Job was picked up by worker but never completed (worker crashed)
+  logger.warn('Stalled job detected', { jobId: job.id });
+});
+```
+
+**Key design decisions:**
+- **Idempotency:** Use `jobId` to prevent duplicate processing
+- **Dead Letter Queue:** Failed jobs after max retries go to a DLQ for manual review
+- **Backpressure:** Bull pauses producers when queue depth exceeds threshold
+- **Observability:** Bull Board UI for real-time queue monitoring
+
 -----
 
 ## 15. High-Level / Advanced Concepts
@@ -1619,4 +1698,4 @@ and incident response? Give me answers with examples.
 
 -----
 
-*Last updated: March 2026 | Prepared for 5-year senior full-stack developer interviews*
+*Last updated: April 2026 | Prepared for 5-year senior full-stack developer interviews*
