@@ -271,13 +271,13 @@ results.forEach(result => {
 
 **How it works:**
 
-| Construct | Behaviour | Line |
-|---|---|---|
-| `Promise.all([...])` | Rejects immediately when the **first** promise rejects. The other promises keep running (not cancelled), but their results are discarded. | Lines 221–225 |
-| `try { ... } catch (err)` | Catches the first rejection. You have no visibility into which of the three failed or what the others returned. | Lines 220–228 |
-| `Promise.allSettled([...])` | **Always** resolves (never rejects) after all promises finish. Each result has `status: 'fulfilled'` or `status: 'rejected'`. | Lines 231–235 |
-| `result.status === 'fulfilled'` | Check whether this particular promise succeeded. `result.value` holds the data. | Line 238 |
-| `result.reason` | If the promise rejected, `result.reason` is the error (equivalent to what `catch(err)` would receive). | Line 260 |
+| Construct | Behaviour |
+|---|---|
+| `Promise.all([...])` | Rejects immediately when the **first** promise rejects. The other promises keep running (not cancelled), but their results are discarded. |
+| `try { ... } catch (err)` | Catches the first rejection. You have no visibility into which of the three failed or what the others returned. |
+| `Promise.allSettled([...])` | **Always** resolves (never rejects) after all promises finish. Each result has `status: 'fulfilled'` or `status: 'rejected'`. |
+| `result.status === 'fulfilled'` | Check whether this particular promise succeeded. `result.value` holds the data. |
+| `result.reason` | If the promise rejected, `result.reason` is the error (equivalent to what `catch(err)` would receive). |
 
 **Purpose:**
 - Use `Promise.all` when all results are required and failure of one means the whole operation should fail (e.g., multi-step transaction).
@@ -482,7 +482,7 @@ import { formatPath } from './utils.mjs';
 | `import { readFile } from 'fs/promises'` | Named import from the promise-based `fs` sub-path. ESM supports `fs/promises` directly; in CJS you'd write `require('fs').promises`. |
 | `export function formatPath(p) { ... }` | Named export — can have multiple per file. Bundlers use this to eliminate unused exports (tree-shaking). |
 | `export async function readConfig(file) { ... }` | Exporting an async function; callers must `await` the result. |
-| `import { formatPath } from './utils.mjs'` | Named import — static, resolved at parse time. Must include the file extension in Node.js ESM. |
+| `import { formatPath } from './utils.mjs'` | Named import — static, resolved at parse time. The `.mjs` extension must be explicit; when using `.js` files, extension may be omitted if `"type": "module"` is set in `package.json`, but explicit extensions are always recommended for clarity. |
 
 **Purpose:** Use CJS for legacy Node.js code, existing npm packages, and `require()`-based tooling. Prefer ESM for new projects to benefit from tree-shaking, top-level `await`, and better static analysis.
 
@@ -832,7 +832,7 @@ router.get('/admin/users', auth.authenticate, auth.authorize('admin'), getUsers)
 | `req.headers.authorization?.startsWith('Bearer ')` | Optional chaining avoids a crash if the header is absent. The Bearer scheme is the HTTP standard for token authentication. |
 | `authHeader.split(' ')[1]` | Extracts just the token from `"Bearer eyJhbG..."` — splits on the space and takes the second element. |
 | `await jwtVerify(token, process.env.JWT_ACCESS_SECRET)` | Verifies: (1) the token was signed by us (signature check), (2) it hasn't expired (timestamp check). Throws `TokenExpiredError` or `JsonWebTokenError` on failure. |
-| `redis.get(\`revoked:${decoded.jti}\`)` | `jti` is the JWT ID claim — a unique identifier per token. When a user logs out, you store `revoked:<jti>` in Redis with a TTL equal to the token's remaining lifetime. This check catches revoked tokens that are not yet expired. |
+| `redis.get(\`revoked:${decoded.jti}\`)` | `jti` is the JWT ID claim — a unique identifier per token. **Note:** `jti` must be explicitly added to the token payload when signing: `jwt.sign({ sub: userId, role, jti: uuidv4() }, ...)`. When a user logs out, you store `revoked:<jti>` in Redis with a TTL equal to the token's remaining lifetime. This check catches revoked tokens that are not yet expired. |
 | `req.user = { id: decoded.sub, role: decoded.role }` | Attaches the decoded user identity to the request object so downstream route handlers can use `req.user.id` without re-decoding the token. |
 | `err.name === 'TokenExpiredError'` | Differentiates "token is expired (refresh it)" from "token is forged/invalid (reject)". Allows clients to detect the expired case and automatically refresh. |
 | `authorize = (...roles) => (req, res, next) => { ... }` | Returns a middleware factory. `authorize('admin', 'moderator')` creates a middleware that only allows requests where `req.user.role` is in that list. Uses **currying** — first call configures, second call handles the request. |
@@ -1041,7 +1041,7 @@ await cache.invalidatePattern(`user:${userId}*`);
 | `JSON.parse(cached)` | Redis stores strings, not objects. `JSON.stringify` was used when storing; `JSON.parse` restores the original object. |
 | `const data = await fetchFn()` | `fetchFn` is a callback (e.g., `() => db.users.findById(id)`) — called only on a cache miss. This keeps the `CacheService` agnostic of where data comes from. |
 | `this.redis.setex(key, ttl, JSON.stringify(data))` | `SETEX` atomically sets the key and its expiry in one command. `JSON.stringify` serialises the object for storage. |
-| `if (data !== null && data !== undefined)` | Don't cache `null` or `undefined` — you'd cache a "not found" state, which could cause issues if the data is created later (thundering herd on first miss). |
+| `if (data !== null && data !== undefined)` | **Recommendation shown in code**: don't cache `null` or `undefined` — caching a "not found" state would prevent the cache from refreshing when the data is later created (negative caching). This guard prevents that scenario. |
 | `this.redis.scanStream({ match: pattern, count: 100 })` | `SCAN` iterates through keys matching a glob pattern in batches of 100. Unlike `KEYS *`, it does not block Redis even with millions of keys. |
 | `const pipeline = this.redis.pipeline()` | Batches multiple `DEL` commands into a single round-trip to Redis. Much more efficient than sending one `DEL` per key. |
 | `await pipeline.exec()` | Sends all the batched `DEL` commands to Redis at once. |
@@ -1406,7 +1406,7 @@ router.post('/api/ai/chat', authenticate, async (req, res) => {
 |---|---|
 | `new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })` | Initialises the Anthropic SDK client. The API key is read from an env variable — never hardcode secrets in source code. |
 | `router.post('/api/ai/chat', authenticate, ...)` | The `authenticate` middleware runs first, ensuring only authenticated users can call the AI endpoint (important for cost control). |
-| `messages.map(msg => ({ ...msg, content: msg.content.replace(/<\/?[^>]+(>|$)/g, '') }))` | **Prompt injection defence**: strips HTML tags from user messages to prevent attackers from injecting HTML/XML that could confuse the model or exfiltrate data via the system prompt. |
+| `messages.map(msg => ({ ...msg, content: msg.content.replace(/<\/?[^>]+(>|$)/g, '') }))` | **Basic sanitisation (not comprehensive prompt injection protection)**: strips HTML/XML tags from user messages. This is a minimal defence — prompt injection can also occur through natural language instructions like "Ignore previous instructions and...". A full defence requires input validation schemas, output moderation, and ideally a separate prompt-classification step before passing to the model. |
 | `res.setHeader('Content-Type', 'text/event-stream')` | Sets the SSE MIME type. The browser recognises this and keeps the connection open, reading each `data: ...` line as an event rather than treating the response as a file download. |
 | `res.setHeader('Cache-Control', 'no-cache')` | Prevents proxies and browsers from caching the streaming response. |
 | `res.setHeader('Connection', 'keep-alive')` | Keeps the TCP connection open for the duration of the stream. Required for SSE. |
@@ -1523,7 +1523,7 @@ class RAGService {
 
 | Line | Explanation |
 |---|---|
-| `this.#chunkText(text, { size: 512, overlap: 50 })` | Splits large documents into 512-character chunks. `overlap: 50` means consecutive chunks share 50 characters — this prevents answers being lost at chunk boundaries (e.g., a sentence spanning two chunks). |
+| `this.#chunkText(text, { size: 512, overlap: 50 })` | Splits large documents into 512-character chunks (~128 tokens). `overlap: 50` means consecutive chunks share 50 characters — this prevents answers being lost at chunk boundaries (e.g., a sentence spanning two chunks). **Note:** Character-based chunking is used here for simplicity. In production, prefer token-based chunking (e.g., using `tiktoken`) since `text-embedding-ada-002` has a context window of 8191 tokens and most semantic units are better measured in tokens than raw characters. The chunk size should be tuned for your document type — 256–512 tokens is a common starting point. |
 | `this.openai.embeddings.create({ model: 'text-embedding-ada-002', input: chunk })` | Calls OpenAI's embedding API, which converts text into a 1536-dimensional numerical vector. Semantically similar texts produce numerically similar vectors (measured by cosine similarity). |
 | `const { data: [{ embedding }] } = await ...` | Nested destructuring: unpacks `response.data[0].embedding` in one step. |
 | `this.pinecone.upsert({ vectors: [{ id, values, metadata }] })` | Stores the vector in Pinecone. `id` uniquely identifies the chunk; `values` is the 1536-number vector; `metadata` stores the original text and source info for retrieval later. `upsert` = insert or update if the ID already exists. |
@@ -1586,7 +1586,7 @@ class AIRateLimiter {
 | `pipeline.incrby(key, estimatedTokens)` | Atomically increments the counter by the number of tokens this request will use. `INCRBY` is atomic in Redis — no race condition even if two requests arrive simultaneously. |
 | `pipeline.expire(key, 3600)` | Sets the key to expire in 3600 seconds. This is a safety net — if the hour-bucket key is somehow never incremented again, Redis will clean it up automatically. |
 | `const [[, totalUsed]] = await pipeline.exec()` | `pipeline.exec()` returns an array of `[error, result]` pairs. `[[, totalUsed]]` destructures the first result's value (the incremented counter after adding the current request's tokens). |
-| `if (totalUsed > HOURLY_LIMIT)` | If the user's hourly token spend exceeds the cap, throw a 429 error. Note: we increment **before** checking — the current request is counted even if it pushes over the limit. |
+| `if (totalUsed > HOURLY_LIMIT)` | If the user's hourly token spend exceeds the cap, throw a 429 error. **Important trade-off**: we increment *before* checking, so the current request is counted even when it's the request that pushes the user over the limit. This means a user at 99,990/100,000 tokens can still consume up to 100,000 + `estimatedTokens` in a single request. This is intentional for simplicity — to enforce a hard cap, check first with `INCRBY` in a Lua script or check against `totalUsed - estimatedTokens < limit`. |
 | `return { used, limit, remaining }` | Returns quota info so the caller can include it in the API response headers (`X-RateLimit-Remaining`, etc.) for clients to display. |
 
 **Purpose:** Combine this with a middleware that calls `checkAndConsumeTokens` before every AI endpoint invocation. The atomic Redis increment prevents double-spending in concurrent requests, and the time-bucket pattern gives automatic hourly resets without cron jobs.
@@ -1903,7 +1903,7 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));   // Ctrl+C
 | `process.exit(0)` | Exit code `0` = clean shutdown. Kubernetes marks the pod as successfully terminated. |
 | `process.exit(1)` | Exit code `1` = error during shutdown. Kubernetes logs this and may alert, depending on configuration. |
 | `setTimeout(() => process.exit(1), 30000)` | **Forced shutdown safety net**: if the graceful close takes more than 30 seconds (e.g., a stuck request, hung DB query), force exit. In Kubernetes, this must be less than `terminationGracePeriodSeconds` (default 30 s). |
-| **Reverse dependency order** | Close resources in reverse order: queues depend on Redis, app depends on queues and DB. Closing in reverse order prevents "use after close" errors. |
+| **Dependency order for closing** | Close resources in the correct order: Bull queues first (stops workers and closes Bull's internal Redis connections), then shared Redis connections, then the DB pool. **Important:** `emailQueue` and the `redis` client should use **separate** Redis connections — Bull creates its own connection pool from the config passed to `new Bull(...)`, so closing the queue doesn't affect your application's `redis` client. If they share a connection, close the queue first before any Redis disconnect. |
 
 **Purpose:** Graceful shutdown is mandatory for zero-downtime deployments. Without it, every deploy causes user-visible errors. Match your timeout here to your Kubernetes `terminationGracePeriodSeconds` setting.
 
